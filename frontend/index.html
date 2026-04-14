@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Shelf Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+
+  <main class="app-shell">
+    <header class="hero">
+      <h1>Smart Shelf Console</h1>
+      <p>RFID check-in, live weight tracking, and instant customer tabs.</p>
+    </header>
+
+    <section class="panel connection-panel">
+      <div class="panel-title-row">
+        <h2>Device Link</h2>
+        <span id="serialStatus" class="status-pill status-offline">Offline</span>
+      </div>
+      <div class="connection-actions">
+        <button id="connectBtn" class="btn btn-primary">Connect Serial</button>
+        <button id="pingBtn" class="btn btn-ghost">Ping</button>
+        <button id="tareBtn" class="btn btn-ghost">Tare Scale</button>
+        <button id="readBtn" class="btn btn-ghost">Read Now</button>
+      </div>
+      <div class="inline-metrics">
+        <div class="metric-card">
+          <span class="metric-label">Latest Weight</span>
+          <strong id="weightValue">--</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Active Customer</span>
+          <strong id="activeUser">None</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel config-panel">
+      <h2>Product & Billing</h2>
+      <div class="config-grid">
+        <label>
+          Product Name
+          <input id="productName" type="text" placeholder="Example: Protein Bar" />
+        </label>
+        <label>
+          Unit Weight (g)
+          <input id="unitWeight" type="number" min="0.1" step="0.1" />
+        </label>
+        <label>
+          Unit Price ($)
+          <input id="unitPrice" type="number" min="0.01" step="0.01" />
+        </label>
+        <label>
+          Change Threshold (g)
+          <input id="changeThreshold" type="number" min="0.1" step="0.1" />
+        </label>
+        <label>
+          Calibration Factor
+          <input id="calibrationFactor" type="number" step="0.000001" />
+        </label>
+      </div>
+      <div class="config-actions">
+        <button id="saveConfigBtn" class="btn btn-primary">Save Product Config</button>
+        <button id="sendCalBtn" class="btn btn-ghost">Send Calibration</button>
+      </div>
+      <p class="hint">Tip: Each significant negative weight delta is treated as items removed from shelf; positive deltas are treated as returns.</p>
+    </section>
+
+    <section class="panel sessions-panel">
+      <div class="panel-title-row">
+        <h2>Customer Tabs</h2>
+        <span class="hint">Scan a card to open or activate a tab.</span>
+      </div>
+      <div id="sessionTabs" class="tabs"></div>
+      <div id="sessionPanels" class="session-panels"></div>
+    </section>
+
+    <section class="panel logs-panel">
+      <h2>Live Event Log</h2>
+      <ul id="eventLog" class="log-list"></ul>
+    </section>
+  </main>
+
+  <div id="registerModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <h3>Register New Card</h3>
+      <p id="registerCardText"></p>
+      <label>
+        Customer Name
+        <input id="registerName" type="text" placeholder="Enter full name" />
+      </label>
+      <div class="modal-actions">
+        <button id="registerCancelBtn" class="btn btn-ghost">Cancel</button>
+        <button id="registerSaveBtn" class="btn btn-primary">Register User</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
