@@ -1,5 +1,7 @@
 const STORAGE_USERS_KEY = "smartShelfUsers";
 const STORAGE_CONFIG_KEY = "smartShelfConfig";
+const SERIAL_BAUD_RATE = 57600;
+const SIGN_OUT_WINDOW_MS = 5000;
 
 const defaultConfig = {
   productName: "Snack",
@@ -40,6 +42,7 @@ const dom = {
   unitPrice: document.getElementById("unitPrice"),
   changeThreshold: document.getElementById("changeThreshold"),
   calibrationFactor: document.getElementById("calibrationFactor"),
+  knownWeight: document.getElementById("knownWeight"),
   sessionTabs: document.getElementById("sessionTabs"),
   sessionPanels: document.getElementById("sessionPanels"),
   eventLog: document.getElementById("eventLog"),
@@ -47,7 +50,8 @@ const dom = {
   registerCardText: document.getElementById("registerCardText"),
   registerName: document.getElementById("registerName"),
   registerCancelBtn: document.getElementById("registerCancelBtn"),
-  registerSaveBtn: document.getElementById("registerSaveBtn")
+  registerSaveBtn: document.getElementById("registerSaveBtn"),
+  autoCalBtn: document.getElementById("autoCalBtn")
 };
 
 init();
@@ -103,6 +107,16 @@ function bindEvents() {
     sendCommand(`CAL|${factor}`);
   });
 
+  dom.autoCalBtn.addEventListener("click", () => {
+    const knownWeight = Number(dom.knownWeight.value);
+    if (!Number.isFinite(knownWeight) || knownWeight <= 0) {
+      alert("Enter a valid known weight in grams first.");
+      return;
+    }
+    sendCommand(`CALW|${knownWeight}`);
+    appendLog(`Requested auto calibration with ${knownWeight}g.`);
+  });
+
   dom.registerCancelBtn.addEventListener("click", () => closeRegisterModal());
 
   dom.registerSaveBtn.addEventListener("click", () => {
@@ -140,7 +154,7 @@ async function connectSerial() {
 
   try {
     const port = await navigator.serial.requestPort();
-    await port.open({ baudRate: 115200 });
+    await port.open({ baudRate: SERIAL_BAUD_RATE });
 
     state.port = port;
     state.readLoopActive = true;
@@ -260,6 +274,11 @@ function processSerialLine(line) {
   }
 
   if (type === "SYS") {
+    if (payload.startsWith("AUTH_OUT|")) {
+      const cardId = payload.slice("AUTH_OUT|".length).trim();
+      onCardSignedOut(cardId);
+      return;
+    }
     appendLog(`Device: ${payload}`);
     return;
   }
@@ -288,9 +307,43 @@ function onCardScanned(cardId) {
     return;
   }
 
+  const now = Date.now();
+  const session = state.sessions[cardId];
+  const lastTapAt = session ? session.lastTapAtMs : null;
+  const shouldSignOut = state.activeCardId === cardId && lastTapAt && (now - lastTapAt) >= SIGN_OUT_WINDOW_MS;
+
   existingUser.taps = (existingUser.taps || 0) + 1;
   saveUsers();
+
+  if (shouldSignOut) {
+    session.lastTapAtMs = now;
+    onCardSignedOut(cardId);
+    return;
+  }
+
   activateCard(cardId);
+}
+
+function onCardSignedOut(cardId) {
+  if (!cardId) {
+    return;
+  }
+
+  const user = state.users[cardId];
+  const label = user ? `${user.name} (${cardId})` : cardId;
+
+  if (state.activeCardId === cardId) {
+    state.activeCardId = null;
+    dom.activeUser.textContent = "None";
+    if (state.latestWeight !== null) {
+      state.previousWeight = state.latestWeight;
+    }
+  }
+
+  removeSession(cardId);
+  renderSessions();
+
+  appendLog(`Signed out ${label}.`);
 }
 
 function onWeightEvent(weight) {
@@ -369,9 +422,12 @@ function activateCard(cardId) {
       events: [],
       openedAt: timestamp(),
       lastWeight: state.latestWeight,
-      lastDelta: 0
+      lastDelta: 0,
+      lastTapAtMs: Date.now()
     };
     state.sessionOrder.push(cardId);
+  } else {
+    state.sessions[cardId].lastTapAtMs = Date.now();
   }
 
   state.activeCardId = cardId;
@@ -382,6 +438,15 @@ function activateCard(cardId) {
 
   appendLog(`Welcome ${user.name}. Customer tab is active.`);
   renderSessions();
+}
+
+function removeSession(cardId) {
+  if (!state.sessions[cardId]) {
+    return;
+  }
+
+  delete state.sessions[cardId];
+  state.sessionOrder = state.sessionOrder.filter((id) => id !== cardId);
 }
 
 function renderSessions() {
@@ -464,7 +529,8 @@ async function sendCommand(command) {
   }
 
   try {
-    await state.writer.write(`${command}\n`);
+    const encoder = new TextEncoder();
+    await state.writer.write(encoder.encode(`${command}\n`));
   } catch (error) {
     appendLog(`Write failed: ${error.message}`);
   }

@@ -59,7 +59,7 @@ Browser sends commands:
 - `READ`
 - `CAL|<factor>`
 
-Baud rate: `115200`
+Baud rate: `57600`
 
 ## Calibration
 
