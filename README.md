@@ -16,6 +16,14 @@ This project implements a smart shelf flow:
 
 ## Hardware Wiring
 
+### Load Cell -> HX711
+
+- `Red` -> `E+`
+- `Black` -> `E-`
+- `White` -> `A-`
+- `Green` -> `A+`
+
+
 ### HX711 -> MKR1000
 
 - `HX711 DT` -> `D3`
@@ -63,12 +71,8 @@ Baud rate: `57600`
 
 ## Calibration
 
-1. Keep `calibration_factor` in firmware at `1.0` for first run.
-2. Upload firmware and connect frontend.
-3. Tare with an empty shelf.
-4. Place a known weight and read output.
-5. Compute and set correct factor, then send it from UI or hardcode in firmware.
-
+Calibration is done in the //calibration section in `smart_shelf_controller/smart_shelf_controller.ino`
+To calibrate change values in `scale.set_scale(x)` and `scale.tare(y)`.
 ## Run the Frontend
 
 Web Serial requires a secure context (`https://` or `http://localhost`).
